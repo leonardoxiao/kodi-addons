@@ -1,16 +1,15 @@
-PureSpin's Kodi (XBMC) Repository
+PureSpin's Kodi (XBMC) addons repository
 =========================
 
 * Author:	Leonardo Xiao (<purespin@gmail.com>)
 * Date:		March, 2016
 * Last Update:	March 16, 2016
 * Version:	0.0.1
-* Github:	<https://github.com/leonardoxiao/purespin-kodi-repo>
-* Zip Download:	<http://ramblingahoge.net/purespin-kodi-repo/repo/purespin-kodi-repo-0.0.1.zip>
+* Github:	<https://github.com/leonardoxiao/kodi-addons>
 
 Hello There!
 
-This is my Kodi (XBMC) Addon repository! Here I host addons that I have made or modified for Kodi, or
+This is my Kodi (XBMC) Addons repository! Here I host addons that I have made or modified for Kodi, or
 that I have been asked to host. Each addon probably has it's own repository, with the exception 
 of the repository addon itself, as my belief is that one should not have to clone all of the 
 addons to only modify a single one. This git repository just serves as a collection of the 
