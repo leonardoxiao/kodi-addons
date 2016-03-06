@@ -4,6 +4,7 @@
 # Created on: 16.02.2016
 # License: GPL v.3 https://www.gnu.org/copyleft/gpl.html
 
+import re
 import sys
 import time
 import json
@@ -36,51 +37,6 @@ CATEGORIES = [
 
 THUMBNAIL = 'icon.png'
 
-# Free sample videos are provided by www.vidsplay.com
-# Here we use a fixed set of properties simply for demonstrating purposes
-# In a "real life" plugin you will need to get info and links to video files/streams
-# from some web-site or online service.
-VIDEOS = {'Animals': [{'name': 'Crab',
-                       'thumb': 'http://www.vidsplay.com/vids/crab.jpg',
-                       'video': 'http://www.vidsplay.com/vids/crab.mp4',
-                       'genre': 'Animals'},
-                      {'name': 'Alligator',
-                       'thumb': 'http://www.vidsplay.com/vids/alligator.jpg',
-                       'video': 'http://www.vidsplay.com/vids/alligator.mp4',
-                       'genre': 'Animals'},
-                      {'name': 'Turtle',
-                       'thumb': 'http://www.vidsplay.com/vids/turtle.jpg',
-                       'video': 'http://www.vidsplay.com/vids/turtle.mp4',
-                       'genre': 'Animals'}
-                      ],
-            'Cars': [{'name': 'Postal Truck',
-                      'thumb': 'http://www.vidsplay.com/vids/us_postal.jpg',
-                      'video': 'http://www.vidsplay.com/vids/us_postal.mp4',
-                      'genre': 'Cars'},
-                     {'name': 'Traffic',
-                      'thumb': 'http://www.vidsplay.com/vids/traffic1.jpg',
-                      'video': 'http://www.vidsplay.com/vids/traffic1.avi',
-                      'genre': 'Cars'},
-                     {'name': 'Traffic Arrows',
-                      'thumb': 'http://www.vidsplay.com/vids/traffic_arrows.jpg',
-                      'video': 'http://www.vidsplay.com/vids/traffic_arrows.mp4',
-                      'genre': 'Cars'}
-                     ],
-            'Food': [{'name': 'Chicken',
-                      'thumb': 'http://www.vidsplay.com/vids/chicken.jpg',
-                      'video': 'http://www.vidsplay.com/vids/bbqchicken.mp4',
-                      'genre': 'Food'},
-                     {'name': 'Hamburger',
-                      'thumb': 'http://www.vidsplay.com/vids/hamburger.jpg',
-                      'video': 'http://www.vidsplay.com/vids/hamburger.mp4',
-                      'genre': 'Food'},
-                     {'name': 'Pizza',
-                      'thumb': 'http://www.vidsplay.com/vids/pizza.jpg',
-                      'video': 'http://www.vidsplay.com/vids/pizza.mp4',
-                      'genre': 'Food'}
-                     ]}
-
-
 def get_categories():
     """
     Get the list of match categories.
@@ -90,7 +46,6 @@ def get_categories():
 
     :return: list
     """
-    #return VIDEOS.keys()
     return CATEGORIES
 
 
@@ -105,22 +60,6 @@ def get_video(video):
     :return: video url
     """
     print("=====video_url={0}".format(video))
-
-    #if video[:2] == '//' and video[-4:] == 'json':
-    if video[-4:] != 'json':
-        #req = urllib2.Request(video, headers={'User-Agent': "Magic Browser"}) 
-        req = urllib2.Request(video, headers=HEADERS) 
-        con = urllib2.urlopen( req )
-        soup = BeautifulSoup(con.read(), "html.parser")
-
-        url = ''
-        for script in soup.find_all("script"):
-            if script.has_attr('data-config'):
-                url = script['data-config']
-                break
-
-        video = url
- 
 
     if video[:2] == '//':
         video = 'http:' + video
@@ -157,8 +96,8 @@ def get_video(video):
     return url
 
 
-def ajax(acp_pid, acp_currpage):
-    print("ajax({0}, {1})".format(acp_pid, acp_currpage))
+def ajax_get_video(acp_pid, acp_currpage):
+    print("ajax_get_video({0}, {1})".format(acp_pid, acp_currpage))
 
     url = 'http://www.fullmatchesandshows.com/wp-admin/admin-ajax.php'
     user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'
@@ -172,13 +111,35 @@ def ajax(acp_pid, acp_currpage):
     #soup = BeautifulSoup(con.read(), "html.parser")
     soup = BeautifulSoup(content, "html.parser")
     script = soup.find("script")
+    if script != None and script.has_attr('data-config'):
+        url = script['data-config']
+        return url
+
+    return None
+
+def ajax_get_next_page(td_block_id, td_atts, td_column_number, td_current_page, td_block_type):
+    print("ajax_get_next_page({0}, {1})".format())
+
+    url = 'http://www.fullmatchesandshows.com/wp-admin/admin-ajax.php'
+    user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'
+    headers = { 'User-Agent' : user_agent, 'Content-type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' }
+
+    params = {'action': 'td_ajax_block', 'td_atts': td_atts, 'td_block_id': td_block_id, 'td_column_number': td_column_number, 'td_current_page': td_current_page, 'block_type': td_block_type, 'td_filter_value=': '', 'td_user_action': ''}
+    req = urllib2.Request(url, urllib.urlencode(params), headers)
+    con = urllib2.urlopen(req)
+    content = con.read()
+    print("content={0}".format(content))
+    #soup = BeautifulSoup(con.read(), "html.parser")
+    soup = BeautifulSoup(content, "html.parser")
+    script = soup.find("script")
     if script.has_attr('data-config'):
         url = script['data-config']
         return url
 
     return None
 
-def get_match(match_url):
+
+def get_match_options(match_url):
     """
     Get the option of a match.
     Here you can insert some parsing code that retrieves
@@ -250,9 +211,8 @@ def get_match(match_url):
 
     for item in items:
         if item['video'][0] == '#':
-            item['video'] = ajax(acp_post['value'], item['video'][1:])
+            item['video'] = ajax_get_video(acp_post['value'], item['video'][1:])
 
-    #return VIDEOS[category]
     return items
 
 
@@ -284,7 +244,43 @@ def get_matches(category):
         item['genre'] = category
         items.append(item)
 
-    #return VIDEOS[category]
+    # <a href="#" class="td-ajax-next-page" id="next-page-td_uid_1_56da1529a27a1" data-td_block_id="td_uid_1_56da1529a27a1"><i class="td-icon-font td-icon-menu-right"></i></a>
+    td_next_prev_wrap = soup.find("div", class_="td-next-prev-wrap")
+    td_next_page = td_next_prev_wrap.find("a", class_="td-ajax-next-page")
+    td_block_id = td_next_page['data-td_block_id']
+    print("=====td_block_id={0}".format(td_block_id))
+
+    for wpb_wrapper in soup.find_all("div", class_="wpb_wrapper"):
+        script = wpb_wrapper.find("script")
+        if script != None and script.text.find(td_block_id) != -1:
+            scriptText = script.text
+            print("=====script={0}".format(scriptText))
+
+            # var block_td_uid_1_56da27e59fe1f = new tdBlock();
+            # block_td_uid_1_56da27e59fe1f.id = "td_uid_1_56da27e59fe1f";
+            # block_td_uid_1_56da27e59fe1f.atts = '{"custom_title":"Latest Highlights and Full Matches","limit":"18","td_ajax_filter_type":"td_category_ids_filter","td_filter_default_txt":"All","ajax_pagination":"next_prev","td_ajax_filter_ids":"499,2,79,28,49,94,65,23,55","category_ids":"94, 65, 218, 233","class":"td_block_id_1997256863 td_uid_1_56da27e59fe1f_rand"}';
+            # block_td_uid_1_56da27e59fe1f.td_column_number = "3";
+            # block_td_uid_1_56da27e59fe1f.block_type = "td_block_3";
+            # block_td_uid_1_56da27e59fe1f.post_count = "18";
+            # block_td_uid_1_56da27e59fe1f.found_posts = "3294";
+            # block_td_uid_1_56da27e59fe1f.header_color = "";
+            # block_td_uid_1_56da27e59fe1f.ajax_pagination_infinite_stop = "";
+            # block_td_uid_1_56da27e59fe1f.max_num_pages = "183";
+            # tdBlocksArray.push(block_td_uid_1_56da27e59fe1f);
+
+            matchObj = re.match(r'.*block_{0}.atts\s+\=\s+\'(.*)\'\;'.format(td_block_id), scriptText)
+            if matchObj:
+                td_atts = matchObj.group(1)
+            matchObj = re.match(r'.*block_{0}.td_column_number\s+\=\s+\"(\d+)\"\;'.format(td_block_id), scriptText)
+            if matchObj:
+                td_column_number = matchObj.group(1)
+            matchObj = re.match(r'.*block_{0}.block_type\s+\=\s+\"(\w+)\"\;'.format(td_block_id), scriptText)
+            if matchObj:
+                td_block_type = matchObj.group(1)
+
+            #ajax_get_next_page(td_block_id, td_atts, td_column_number, td_current_page, td_block_type)
+            break
+
     return items
 
 
@@ -380,7 +376,7 @@ def view_match(match):
     :param match: url
     """
     # Get the list of videos in the category.
-    videos = get_match(match)
+    videos = get_match_options(match)
     # Create a list for our items.
     listing = []
     # Iterate through videos.
@@ -395,10 +391,16 @@ def view_match(match):
         list_item.setArt({'thumb': video['thumb'], 'icon': video['thumb'], 'fanart': video['thumb']})
         # Set 'IsPlayable' property to 'true'.
         # This is mandatory for playable items!
-        list_item.setProperty('IsPlayable', 'true')
-        # Create a URL for the plugin recursive callback.
-        # Example: plugin://plugin.video.example/?action=play&video=http://www.vidsplay.com/vids/crab.mp4
-        url = '{0}?action=play&video={1}'.format(_url, video['video'])
+        if video['video'] == None:
+            list_item.setProperty('IsPlayable', 'false')
+            url = ''
+        else:
+            list_item.setProperty('IsPlayable', 'true')
+
+            # Create a URL for the plugin recursive callback.
+            # Example: plugin://plugin.video.example/?action=play&video=http://www.vidsplay.com/vids/crab.mp4
+            url = '{0}?action=play&video={1}'.format(_url, video['video'])
+
         # Add the list item to a virtual Kodi folder.
         # is_folder = False means that this item won't open any sub-list.
         is_folder = False

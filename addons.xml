@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.fullmatches" version="0.0.3" name="Full Matches and Shows" provider-name="purespin">
+<addon id="plugin.video.fullmatches" version="0.0.4" name="Full Matches and Shows" provider-name="purespin">
 <requires>
   <import addon="xbmc.python" version="2.14.0"/>
   <import addon="script.module.beautifulsoup4" version="4.3.2"/>
@@ -10,7 +10,7 @@
 </extension>
 <extension point="xbmc.addon.metadata">
   <summary lang="en">Full Matches and Shows</summary>
-  <description lang="en">A kodi video plugin for soccer matches videos from www.fullmatchesandshows.com</description>
+  <description lang="en">A kodi video plugin for soccer matches from www.fullmatchesandshows.com</description>
   <disclaimer lang="en">Videos provided by www.fullmatchesandshows.com</disclaimer>
 </extension>
 </addon>
