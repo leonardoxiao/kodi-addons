@@ -26,15 +26,6 @@ HEADERS = {'User-Agent': "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9
 
 URL = 'http://www.fullmatchesandshows.com/'
 
-CATEGORIES = [
-    'Latest Hightlights and Full Matches',
-    'Competitions',
-    'Live Football',
-    'Shows',
-    'News',
-    'Humor'
-]
-
 THUMBNAIL = 'icon.png'
 
 def get_categories():
@@ -43,10 +34,34 @@ def get_categories():
     Here you can insert some parsing code that retrieves
     the list of match categories (e.g. 'Movies', 'TV-shows', 'Documentaries' etc.)
     from some site or server.
-
     :return: list
     """
-    return CATEGORIES
+    req = urllib2.Request(URL, headers=HEADERS) 
+    con = urllib2.urlopen( req )
+    content = con.read()
+    soup = BeautifulSoup(content, "html.parser")
+
+    items = []
+    main_menu_1 = soup.find("ul", {"id":"menu-main-menu-1"})
+    for li in main_menu_1.find_all("li"):
+        item = {}
+        if li.text == "HOME":
+            item['name'] = 'Latest Hightlights and Full Matches'
+            item['url'] = li.find("a")['href']
+            items.append(item)
+        else:
+            sub_menu = li.find("ul", class_="sub-menu")
+            if sub_menu == None:
+                # We will skip the rest (live football, humor etc) for now
+                continue
+            else:
+                for sub_item in sub_menu.find_all("li"):
+                    item = {}
+                    item['name'] = sub_item.text
+                    item['url'] = sub_item.find("a")['href']
+                    items.append(item)
+
+    return items
 
 
 def get_video(video):
@@ -87,8 +102,8 @@ def get_video(video):
     for media in soup.find_all("media"):
         media_url = media['url']
         tbr = media['bitrate']
-        width = media['width']
-        height = media['height']
+        #width = media['width']
+        #height = media['height']
 
         url = '{0}/{1}'.format(base_url, media_url)
         break
@@ -117,8 +132,8 @@ def ajax_get_video(acp_pid, acp_currpage):
 
     return None
 
-def ajax_get_next_page(td_block_id, td_atts, td_column_number, td_current_page, td_block_type):
-    print("ajax_get_next_page({0}, {1})".format())
+def ajax_get_next_page(td_block_id, td_atts, td_column_number, td_block_type, td_current_page):
+    print("ajax_get_next_page({0}, {1})".format(td_block_id, td_current_page))
 
     url = 'http://www.fullmatchesandshows.com/wp-admin/admin-ajax.php'
     user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'
@@ -128,16 +143,7 @@ def ajax_get_next_page(td_block_id, td_atts, td_column_number, td_current_page, 
     req = urllib2.Request(url, urllib.urlencode(params), headers)
     con = urllib2.urlopen(req)
     content = con.read()
-    print("content={0}".format(content))
-    #soup = BeautifulSoup(con.read(), "html.parser")
-    soup = BeautifulSoup(content, "html.parser")
-    script = soup.find("script")
-    if script.has_attr('data-config'):
-        url = script['data-config']
-        return url
-
-    return None
-
+    return content
 
 def get_match_options(match_url):
     """
@@ -212,11 +218,13 @@ def get_match_options(match_url):
     for item in items:
         if item['video'][0] == '#':
             item['video'] = ajax_get_video(acp_post['value'], item['video'][1:])
+            if item['video'] == None:
+                item['name'] += ' - Soon...'
 
     return items
 
 
-def get_matches(category):
+def get_matches_ajax(block_id, atts, column_number, block_type, current_page):
     """
     Get the list of videofiles/streams.
     Here you can insert some parsing code that retrieves
@@ -225,35 +233,98 @@ def get_matches(category):
     :param category: str
     :return: list
     """
-    req = urllib2.Request(URL, headers=HEADERS) 
-    con = urllib2.urlopen( req )
-    content = con.read()
-    soup = BeautifulSoup(content, "html.parser")
+    content = ajax_get_next_page(block_id, atts, column_number, block_type, current_page)
+    data = json.loads(content)
+    items = get_matches(data['td_data'])
 
-    td_main = soup.find("div", class_="td-main-content-wrap td-main-page-wrap")
-    #print(td_main)
+    #data['td_hide_prev']
+    if data['td_hide_next'] != 'false':
+        item = {}
+        item['name'] = 'Next Page'
+        item['video'] = None
+        try:
+            currentPage = int(current_page)
+            currentPage += 1
+        except ValueError:
+            currentPage = 1
 
+        item['url'] = '{0}?action=td_ajax_block&block_id={1}&atts={2}&column_number={3}&block_type={4}&current_page={5}'.format(_url, block_id, atts, column_number, block_type, currentPage)
+        items.append(item)
+    
+    return items
+
+
+def get_matches(content):
+    """
+    Get the list of videofiles/streams.
+    Here you can insert some parsing code that retrieves
+    the list of videostreams in a given category from some site or server.
+
+    :param category: str
+    :return: list
+    """
     items = []
-    #for td_block in td_main.find_all("div", class_="td-block-span4"):
+
+    soup = BeautifulSoup(content, "html.parser")
+    for td_block in soup.find_all("div", class_=re.compile("^td_module_mx\d+")):
+        item = {}
+        item['thumb'] = td_block.find("img", itemprop="image")['src']
+        item['name'] = td_block.find("h3", itemprop="name").text
+        item['video'] = td_block.find("a", itemprop="url")['href']
+        #item['date'] = td_block.find("time", itemprop="dateCreated").text
+        item['genre'] = 'Soccer'
+        items.append(item)
+
     for td_block in soup.find_all("div", class_="td-block-span4"):
         item = {}
         item['thumb'] = td_block.find("img", itemprop="image")['src']
         item['name'] = td_block.find("h3", itemprop="name").text
         item['video'] = td_block.find("a", itemprop="url")['href']
-        item['date'] = td_block.find("time", itemprop="dateCreated").text
-        item['genre'] = category
+        #item['date'] = td_block.find("time", itemprop="dateCreated").text
+        item['genre'] = 'Soccer'
         items.append(item)
 
+    return items
+
+
+
+def get_block_info(content):
+    """
+    Get the list of videofiles/streams.
+    Here you can insert some parsing code that retrieves
+    the list of videostreams in a given category from some site or server.
+
+    :param url: url
+    :return: block_info
+    """
+    soup = BeautifulSoup(content, "html.parser")
+
+    item = {}
+
     # <a href="#" class="td-ajax-next-page" id="next-page-td_uid_1_56da1529a27a1" data-td_block_id="td_uid_1_56da1529a27a1"><i class="td-icon-font td-icon-menu-right"></i></a>
-    td_next_prev_wrap = soup.find("div", class_="td-next-prev-wrap")
-    td_next_page = td_next_prev_wrap.find("a", class_="td-ajax-next-page")
-    td_block_id = td_next_page['data-td_block_id']
+    #td_next_prev_wrap = soup.find("div", class_="td-next-prev-wrap")
+    #td_next_page = td_next_prev_wrap.find("a", class_="td-ajax-next-page")
+    #td_block_id = td_next_page['data-td_block_id']
+
+    for div in soup.find_all("div", id=re.compile("^td_uid_\d+_\w+")):
+        print("div id={0}, class={1}".format(div['id'], div['class']))
+        td_block_id=div['id']
+        break
+    else:
+        print("ERROR: failed to find td_block_id!")
+        return None
+
+    #subcat_link = soup.find("a", class_="td-subcat-link")
+    #td_block_id = subcat_link['data-td_block_id']
+
     print("=====td_block_id={0}".format(td_block_id))
 
-    for wpb_wrapper in soup.find_all("div", class_="wpb_wrapper"):
-        script = wpb_wrapper.find("script")
+    #for wpb_wrapper in soup.find_all("div", class_="wpb_wrapper"):
+    for script in soup.find_all("script"):
+        #print("=====wpb_wrapper={0}".format(wpb_wrapper.decode_contents(formatter='html')))
+        #script = wpb_wrapper.find("script")
         if script != None and script.text.find(td_block_id) != -1:
-            scriptText = script.text
+            scriptText = script.text.replace('\n','').replace('\r','')
             print("=====script={0}".format(scriptText))
 
             # var block_td_uid_1_56da27e59fe1f = new tdBlock();
@@ -268,20 +339,44 @@ def get_matches(category):
             # block_td_uid_1_56da27e59fe1f.max_num_pages = "183";
             # tdBlocksArray.push(block_td_uid_1_56da27e59fe1f);
 
-            matchObj = re.match(r'.*block_{0}.atts\s+\=\s+\'(.*)\'\;'.format(td_block_id), scriptText)
-            if matchObj:
-                td_atts = matchObj.group(1)
-            matchObj = re.match(r'.*block_{0}.td_column_number\s+\=\s+\"(\d+)\"\;'.format(td_block_id), scriptText)
-            if matchObj:
-                td_column_number = matchObj.group(1)
-            matchObj = re.match(r'.*block_{0}.block_type\s+\=\s+\"(\w+)\"\;'.format(td_block_id), scriptText)
-            if matchObj:
-                td_block_type = matchObj.group(1)
+            pattern = '.*block_{0}\.atts\s+\=\s+\'(.*)\'\;.*block_{0}\.td_column_number\s+\=\s+\"(\d+)\"\;.*block_{0}\.block_type\s+\=\s+\"(\w+)\"\;'.format(td_block_id)
+            matchObj = re.match(pattern, scriptText)
+            if matchObj == None:
+                print("ERROR: failed to parse for 'atts' attribute!")
+                continue
 
-            #ajax_get_next_page(td_block_id, td_atts, td_column_number, td_current_page, td_block_type)
+            td_atts = matchObj.group(1)
+            td_column_number = matchObj.group(2)
+            td_block_type = matchObj.group(3)
+            print("td_atts={0}".format(td_atts))
+            print("td_column_number={0}".format(td_column_number))
+            print("td_block_type={0}".format(td_block_type))
+
+            item['ajax'] = True
+            item['block_id'] = td_block_id
+            item['atts'] = td_atts
+            item['column_number'] = td_column_number
+            item['block_type'] = td_block_type
             break
+    else:
+        print("Warning: failed to find <script> tag! Try traditional hyperlink instead...")
+        for page_nav in soup.find_all("div", class_=re.compile("^page-nav.*")):
+            current_page = page_nav.find("span", class_="current")
+            print("current={0}".format(current_page.text))
+            for link in page_nav.find_all("a"):
+                if link.find("i", class_="td-icon-menu-right"):
+                    print("next_page_url={0}".format(link['href']))
+                    item['next_page_url'] = link['href']
+                    break
+            break
+        else:
+            if soup.find("div", class_="td-category-grid") or soup.find("div", class_="td-main-content-wrap"):
+                print("This page doesn't have the Prev/Next link!")
+            else:
+                print("ERROR: failed to parse this page!")
+                return None
 
-    return items
+    return item
 
 
 def list_categories():
@@ -294,8 +389,10 @@ def list_categories():
     listing = []
     # Iterate through categories
     for category in categories:
+        category_name = category['name']
+        category_url = category['url']
         # Create a list item with a text label and a thumbnail image.
-        list_item = xbmcgui.ListItem(label=category, thumbnailImage=THUMBNAIL)
+        list_item = xbmcgui.ListItem(label=category_name, thumbnailImage=THUMBNAIL)
         # Set graphics (thumbnail, fanart, banner, poster, landscape etc.) for the list item.
         # Here we use the same image for all items for simplicity's sake.
         # In a real-life plugin you need to set each image accordingly.
@@ -307,14 +404,15 @@ def list_categories():
         # setInfo allows to set various information for an item.
         # For available properties see the following link:
         # http://mirrors.xbmc.org/docs/python-docs/15.x-isengard/xbmcgui.html#ListItem-setInfo
-        list_item.setInfo('video', {'title': category, 'genre': category})
+        list_item.setInfo('video', {'title': category_name, 'genre': category_name})
         # Create a URL for the plugin recursive callback.
         # Example: plugin://plugin.video.example/?action=listing&category=Animals
-        url = '{0}?action=list&category={1}'.format(_url, category)
+        url = '{0}?action=list&category_name={1}&category_url={2}'.format(_url, category_name, category_url)
         # is_folder = True means that this item opens a sub-list of lower level items.
         is_folder = True
         # Add our item to the listing as a 3-element tuple.
         listing.append((url, list_item, is_folder))
+
     # Add our listing to Kodi.
     # Large lists and/or slower systems benefit from adding all items at once via addDirectoryItems
     # instead of adding one by ove via addDirectoryItem.
@@ -326,38 +424,87 @@ def list_categories():
     xbmcplugin.endOfDirectory(_handle)
 
 
-def list_matches(category):
+def list_matches_in_category(category_name, category_url):
     """
     Create the list of matches in the Kodi interface.
 
-    :param category: str
+    :param category_name: str
+    :param category_url: url
     """
     # Get the list of videos in the category.
-    videos = get_matches(category)
+
+    print("list_matches({0})".format(category_url))
+    req = urllib2.Request(category_url, headers=HEADERS) 
+    con = urllib2.urlopen( req )
+    content = con.read()
+
+    block_info = get_block_info(content)
+    if block_info == None:
+        return []
+
+    if block_info.has_key('ajax'):
+        current_page = 1
+        return list_matches_ajax(block_info['block_id'], block_info['atts'], block_info['column_number'], block_info['block_type'], current_page)
+    else:
+        videos = get_matches(content)
+
+        if block_info.has_key('next_page_url'):
+            item = {}
+            item['name'] = 'Next Page'
+            item['video'] = None
+
+            next_page_url = block_info['next_page_url']
+            item['url'] = '{0}?action=list&category_name={1}&category_url={2}'.format(_url, category_name, next_page_url)
+            print("url={0}".format(item['url']))
+            videos.append(item)
+
+        return list_matches(videos)
+ 
+
+def list_matches_ajax(block_id, atts, column_number, block_type, current_page):
+    """
+    Create the list of matches in the Kodi interface.
+    """
+    # Get the list of videos in the category.
+    videos = get_matches_ajax(block_id, atts, column_number, block_type, current_page)
+    return list_matches(videos)
+
+
+def list_matches(videos):
+    """
+    Create the list of matches in the Kodi interface.
+    """
     # Create a list for our items.
     listing = []
     # Iterate through videos.
     for video in videos:
         # Create a list item with a text label and a thumbnail image.
         list_item = xbmcgui.ListItem(label=video['name'])
-        # Set additional info for the list item.
-        list_item.setInfo('video', {'title': video['name'], 'genre': video['genre'], 'aired': video['date']})
-        list_item.setLabel2(video['date'])
-        # Set graphics (thumbnail, fanart, banner, poster, landscape etc.) for the list item.
-        # Here we use the same image for all items for simplicity's sake.
-        # In a real-life plugin you need to set each image accordingly.
-        list_item.setArt({'thumb': video['thumb'], 'icon': video['thumb'], 'fanart': video['thumb']})
+
+        if video['video'] == None:
+            # Non-video item
+            url = video['url']
+        else:
+            # Set additional info for the list item.
+            list_item.setInfo('video', {'title': video['name'], 'genre': video['genre']})
+            # Set graphics (thumbnail, fanart, banner, poster, landscape etc.) for the list item.
+            # Here we use the same image for all items for simplicity's sake.
+            # In a real-life plugin you need to set each image accordingly.
+            list_item.setArt({'thumb': video['thumb'], 'icon': video['thumb'], 'fanart': video['thumb']})
+
+            # Create a URL for the plugin recursive callback.
+            url = '{0}?action=view&match={1}'.format(_url, video['video'])
+
         # Set 'IsPlayable' property to 'true'.
         # This is mandatory for playable items!
         list_item.setProperty('IsPlayable', 'true')
-        # Create a URL for the plugin recursive callback.
-        # Example: plugin://plugin.video.example/?action=play&video=http://www.vidsplay.com/vids/crab.mp4
-        url = '{0}?action=view&match={1}'.format(_url, video['video'])
+
         # Add the list item to a virtual Kodi folder.
         # is_folder = False means that this item won't open any sub-list.
         is_folder = True
         # Add our item to the listing as a 3-element tuple.
         listing.append((url, list_item, is_folder))
+
     # Add our listing to Kodi.
     # Large lists and/or slower systems benefit from adding all items at once via addDirectoryItems
     # instead of adding one by ove via addDirectoryItem.
@@ -447,7 +594,10 @@ def router(paramstring):
     if params:
         if params['action'] == 'list':
             # Display the list of matches in a provided category.
-            list_matches(params['category'])
+            list_matches_in_category(params['category_name'], params['category_url'])
+        elif params['action'] == 'td_ajax_block':
+            # Display the list of matches using Ajax request.
+            list_matches_ajax(params['block_id'], params['atts'], params['column_number'], params['block_type'], params['current_page'])
         elif params['action'] == 'view':
             # Display the list of options for a provided match.
             view_match(params['match'])
