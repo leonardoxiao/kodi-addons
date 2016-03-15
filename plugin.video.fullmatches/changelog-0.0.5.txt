@@ -5,3 +5,5 @@ Version 0.0.2 fixed some packaging issue
 Version 0.0.3 updated icon and added fanart
 
 Version 0.0.4 fixed 'soon...' issue for new videos
+
+Version 0.0.5 added dynamic categories and next page
