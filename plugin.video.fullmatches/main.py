@@ -9,6 +9,7 @@ import sys
 import time
 import json
 from urlparse import parse_qsl
+
 import xbmcgui
 import xbmcplugin
 
@@ -433,7 +434,7 @@ def list_matches_in_category(category_name, category_url):
     """
     # Get the list of videos in the category.
 
-    print("list_matches({0})".format(category_url))
+    print("list_matches_in_category({0})".format(category_url))
     req = urllib2.Request(category_url, headers=HEADERS) 
     con = urllib2.urlopen( req )
     content = con.read()
@@ -493,7 +494,7 @@ def list_matches(videos):
             list_item.setArt({'thumb': video['thumb'], 'icon': video['thumb'], 'fanart': video['thumb']})
 
             # Create a URL for the plugin recursive callback.
-            url = '{0}?action=view&match={1}'.format(_url, video['video'])
+            url = u'{0}?action=view&title={1}&match={2}'.format(_url, video['name'], video['video'])
 
         # Set 'IsPlayable' property to 'true'.
         # This is mandatory for playable items!
@@ -501,7 +502,7 @@ def list_matches(videos):
 
         # Add the list item to a virtual Kodi folder.
         # is_folder = False means that this item won't open any sub-list.
-        is_folder = True
+        is_folder = False
         # Add our item to the listing as a 3-element tuple.
         listing.append((url, list_item, is_folder))
 
@@ -516,7 +517,7 @@ def list_matches(videos):
     xbmcplugin.endOfDirectory(_handle)
 
 
-def view_match(match):
+def play_match(title, match):
     """
     Create the list of playable videos in the Kodi interface.
 
@@ -524,6 +525,21 @@ def view_match(match):
     """
     # Get the list of videos in the category.
     videos = get_match_options(match)
+
+    ret = xbmcgui.Dialog().select(title, [video['name'] for video in videos])
+    if ret < 0:
+        return
+    
+    # Create a playable item with a path to play.
+    path = videos[ret]['video']
+    url = get_video(path)
+    print("=====Play video: {0}".format(url))
+    play_item = xbmcgui.ListItem(path=url)
+    # Pass the item to the Kodi player.
+    xbmcplugin.setResolvedUrl(_handle, True, listitem=play_item)
+
+    return
+
     # Create a list for our items.
     listing = []
     # Iterate through videos.
@@ -553,6 +569,7 @@ def view_match(match):
         is_folder = False
         # Add our item to the listing as a 3-element tuple.
         listing.append((url, list_item, is_folder))
+
     # Add our listing to Kodi.
     # Large lists and/or slower systems benefit from adding all items at once via addDirectoryItems
     # instead of adding one by ove via addDirectoryItem.
@@ -600,7 +617,7 @@ def router(paramstring):
             list_matches_ajax(params['block_id'], params['atts'], params['column_number'], params['block_type'], params['current_page'])
         elif params['action'] == 'view':
             # Display the list of options for a provided match.
-            view_match(params['match'])
+            play_match(params['title'], params['match'])
         elif params['action'] == 'play':
             # Play a video from a provided URL.
             play_video(params['video'])
