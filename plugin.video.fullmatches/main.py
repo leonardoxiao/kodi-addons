@@ -25,7 +25,7 @@ _handle = int(sys.argv[1])
 
 HEADERS = {'User-Agent': "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3"}
 
-URL = 'http://www.fullmatchesandshows.com/'
+URL = 'http://www.fullmatchesandshows.com'
 
 THUMBNAIL = 'icon.png'
 
@@ -434,7 +434,7 @@ def list_matches_in_category(category_name, category_url):
     """
     # Get the list of videos in the category.
 
-    print("list_matches_in_category({0})".format(category_url))
+    print("=====list_matches_in_category({0})".format(category_url))
     req = urllib2.Request(category_url, headers=HEADERS) 
     con = urllib2.urlopen( req )
     content = con.read()
@@ -466,6 +466,8 @@ def list_matches_ajax(block_id, atts, column_number, block_type, current_page):
     """
     Create the list of matches in the Kodi interface.
     """
+    print("=====list_matches_ajax({0})".format(block_id))
+
     # Get the list of videos in the category.
     videos = get_matches_ajax(block_id, atts, column_number, block_type, current_page)
     return list_matches(videos)
@@ -475,6 +477,8 @@ def list_matches(videos):
     """
     Create the list of matches in the Kodi interface.
     """
+    print("=====list_matches()")
+
     # Create a list for our items.
     listing = []
     # Iterate through videos.
@@ -483,8 +487,14 @@ def list_matches(videos):
         list_item = xbmcgui.ListItem(label=video['name'])
 
         if video['video'] == None:
-            # Non-video item
+            # Non-video item: next page
             url = video['url']
+
+            list_item.setProperty('IsPlayable', 'false')
+
+            # Add the list item to a virtual Kodi folder.
+            is_folder = True
+
         else:
             # Set additional info for the list item.
             list_item.setInfo('video', {'title': video['name'], 'genre': video['genre']})
@@ -494,15 +504,16 @@ def list_matches(videos):
             list_item.setArt({'thumb': video['thumb'], 'icon': video['thumb'], 'fanart': video['thumb']})
 
             # Create a URL for the plugin recursive callback.
-            url = u'{0}?action=view&title={1}&match={2}'.format(_url, video['name'], video['video'])
+            url = u'{0}?action=view&match={1}'.format(_url, video['video'])
 
-        # Set 'IsPlayable' property to 'true'.
-        # This is mandatory for playable items!
-        list_item.setProperty('IsPlayable', 'true')
+            # Set 'IsPlayable' property to 'true'.
+            # This is mandatory for playable items!
+            list_item.setProperty('IsPlayable', 'true')
 
-        # Add the list item to a virtual Kodi folder.
-        # is_folder = False means that this item won't open any sub-list.
-        is_folder = False
+            # Add the list item to a virtual Kodi folder.
+            # is_folder = False means that this item won't open any sub-list.
+            is_folder = False
+
         # Add our item to the listing as a 3-element tuple.
         listing.append((url, list_item, is_folder))
 
@@ -517,7 +528,7 @@ def list_matches(videos):
     xbmcplugin.endOfDirectory(_handle)
 
 
-def play_match(title, match):
+def play_match(match):
     """
     Create the list of playable videos in the Kodi interface.
 
@@ -526,7 +537,7 @@ def play_match(title, match):
     # Get the list of videos in the category.
     videos = get_match_options(match)
 
-    ret = xbmcgui.Dialog().select(title, [video['name'] for video in videos])
+    ret = xbmcgui.Dialog().select("Select match options", [video['name'] for video in videos])
     if ret < 0:
         return
     
@@ -607,6 +618,7 @@ def router(paramstring):
     # Parse a URL-encoded paramstring to the dictionary of
     # {<parameter>: <value>} elements
     params = dict(parse_qsl(paramstring))
+    print("=====params={0}".format(params))
     # Check the parameters passed to the plugin
     if params:
         if params['action'] == 'list':
@@ -617,7 +629,7 @@ def router(paramstring):
             list_matches_ajax(params['block_id'], params['atts'], params['column_number'], params['block_type'], params['current_page'])
         elif params['action'] == 'view':
             # Display the list of options for a provided match.
-            play_match(params['title'], params['match'])
+            play_match(params['match'])
         elif params['action'] == 'play':
             # Play a video from a provided URL.
             play_video(params['video'])
