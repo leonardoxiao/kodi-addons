@@ -268,19 +268,30 @@ def get_matches(content):
 
     soup = BeautifulSoup(content, "html.parser")
     for td_block in soup.find_all("div", class_=re.compile("^td_module_mx\d+")):
+        print("td_block={0}".format(td_block))
+        if td_block.find("img") is None:
+            continue
+
         item = {}
-        item['thumb'] = td_block.find("img", itemprop="image")['src']
-        item['name'] = td_block.find("h3", itemprop="name").text
-        item['video'] = td_block.find("a", itemprop="url")['href']
+        #item['thumb'] = td_block.find("img", itemprop="image")['src']
+        item['thumb'] = td_block.find("img")['src']
+        #item['name'] = td_block.find("h3", itemprop="name").text
+        item['name'] = td_block.find("h3").text
+        #item['video'] = td_block.find("a", itemprop="url")['href']
+        item['video'] = td_block.find("a")['href']
         #item['date'] = td_block.find("time", itemprop="dateCreated").text
         item['genre'] = 'Soccer'
         items.append(item)
 
     for td_block in soup.find_all("div", class_="td-block-span4"):
+        print("td_block={0}".format(td_block))
         item = {}
-        item['thumb'] = td_block.find("img", itemprop="image")['src']
-        item['name'] = td_block.find("h3", itemprop="name").text
-        item['video'] = td_block.find("a", itemprop="url")['href']
+        #item['thumb'] = td_block.find("img", itemprop="image")['src']
+        item['thumb'] = td_block.find("img")['src']
+        #item['name'] = td_block.find("h3", itemprop="name").text
+        item['name'] = td_block.find("h3").text
+        #item['video'] = td_block.find("a", itemprop="url")['href']
+        item['video'] = td_block.find("a")['href']
         #item['date'] = td_block.find("time", itemprop="dateCreated").text
         item['genre'] = 'Soccer'
         items.append(item)
@@ -444,9 +455,11 @@ def list_matches_in_category(category_name, category_url):
         return []
 
     if block_info.has_key('ajax'):
+        print("=====ajax!!!")
         current_page = 1
         return list_matches_ajax(block_info['block_id'], block_info['atts'], block_info['column_number'], block_info['block_type'], current_page)
     else:
+        print("=====non-ajax!")
         videos = get_matches(content)
 
         if block_info.has_key('next_page_url'):
