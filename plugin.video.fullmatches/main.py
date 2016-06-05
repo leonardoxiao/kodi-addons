@@ -164,6 +164,12 @@ def get_match_options(match_url):
     con = urllib2.urlopen( req )
     soup = BeautifulSoup(con.read(), "html.parser")
 
+    #for td_block in soup.find_all("div", class_=re.compile("^td_module_mx\d+")):
+    for li in soup.find_all("li", id=re.compile("^item\d+")):
+        print("=====li="+li.text)
+        #print("=====li.parent="+li.parent.decode_contents(formatter="html"))
+        #print("=====li.parent.parent="+li.parent.parent.parent.decode_contents(formatter="html"))
+
     # title
     entry_title = soup.find("h1", class_="entry-title")
 
@@ -180,17 +186,20 @@ def get_match_options(match_url):
         script = acp_content.find("script")
         if script.has_attr('data-config'):
             url = script['data-config']
+            print("=====data-config1={0}".format(url))
     else:
         for script in soup.find_all("script"):
             if script.has_attr('data-config'):
                 url = script['data-config']
+                print("=====data-config2={0}".format(url))
 
     acp_post = soup.find("input", id="acp_post")
     acp_shortcode = soup.find("input", id="acp_shortcode")
 
     paging_menu = soup.find("ul", id="acp_paging_menu")
     if paging_menu != None:
-        for li in paging_menu.find_all("li"):
+        #for li in paging_menu.find_all("li"):
+        for li in soup.find_all("li", id=re.compile("^item\d+")):
             print("=====li="+li.text)
             item = {}
             item['thumb'] = img
@@ -200,10 +209,15 @@ def get_match_options(match_url):
 
             li_class = li['class']
             if len(li_class) > 1 and li_class[1] == 'active':
-                print("=====url="+url)
-                item['video'] = url
+                print("=====(active)url="+url)
+                #item['video'] = url
+                # Hack: this is the correct JSON url for the active video.
+                # But in order to work with all the other inactive videos,
+                # we will pass the URL again to get the JSON url the same way as other videos
+                item['video'] = match_url
             else:
                 href = li.find("a")['href']
+                print("=====href="+href)
                 item['video'] = href
 
             items.append(item)
@@ -217,12 +231,110 @@ def get_match_options(match_url):
         items.append(item)
 
     for item in items:
-        if item['video'][0] == '#':
-            item['video'] = ajax_get_video(acp_post['value'], item['video'][1:])
+        print("=====item['video']="+item['video'])
+        #if item['video'][0] == '#':
+        if True:
+            #item['video'] = ajax_get_video(acp_post['value'], item['video'])
+            item['video'] = get_match_video_url(item['video'])
             if item['video'] == None:
                 item['name'] += ' - Soon...'
 
     return items
+
+def get_match_video_url(match_url):
+    """
+    Get the option of a match.
+    Here you can insert some parsing code that retrieves
+    the list of videostreams in a given category from some site or server.
+
+    :param match_url: url
+    :return: JSON url
+    """
+
+    print("=====get_match_video_url({0})".format(match_url))
+
+    req = urllib2.Request(match_url, headers=HEADERS) 
+    con = urllib2.urlopen( req )
+    soup = BeautifulSoup(con.read(), "html.parser")
+
+    #for td_block in soup.find_all("div", class_=re.compile("^td_module_mx\d+")):
+    for li in soup.find_all("li", id=re.compile("^item\d+")):
+        print("=====li="+li.text)
+        #print("=====li.parent="+li.parent.decode_contents(formatter="html"))
+        #print("=====li.parent.parent="+li.parent.parent.parent.decode_contents(formatter="html"))
+
+    # title
+    entry_title = soup.find("h1", class_="entry-title")
+
+    # thumbnail
+    img = 'icon.png'
+    wpb_wrapper = soup.find("div", class_="wpb_wrapper")
+    if wpb_wrapper != None:
+        img = wpb_wrapper.find("img")['src']
+
+    # video URL
+    url = None
+    acp_content = soup.find("div", id="acp_content")
+    if acp_content != None:
+        script = acp_content.find("script")
+        if script.has_attr('data-config'):
+            url = script['data-config']
+            print("=====data-config1={0}".format(url))
+    else:
+        for script in soup.find_all("script"):
+            if script.has_attr('data-config'):
+                url = script['data-config']
+                print("=====data-config2={0}".format(url))
+
+    return url
+
+    acp_post = soup.find("input", id="acp_post")
+    acp_shortcode = soup.find("input", id="acp_shortcode")
+
+    paging_menu = soup.find("ul", id="acp_paging_menu")
+    if paging_menu != None:
+        #for li in paging_menu.find_all("li"):
+        for li in soup.find_all("li", id=re.compile("^item\d+")):
+            print("=====li="+li.text)
+            item = {}
+            item['thumb'] = img
+            item['name'] = li.find("div", class_="acp_title").text
+            item['genre'] = 'soccer'    # TODO
+            #item['id'] = li['id']
+
+            li_class = li['class']
+            if len(li_class) > 1 and li_class[1] == 'active':
+                print("=====(active)url="+url)
+                #item['video'] = url
+                # Hack: this is the correct JSON url for the active video.
+                # But in order to work with all the other inactive videos,
+                # we will pass the URL again to get the JSON url the same way as other videos
+                item['video'] = match_url
+            else:
+                href = li.find("a")['href']
+                print("=====href="+href)
+                item['video'] = href
+
+            items.append(item)
+
+    else:
+        item = {}
+        item['thumb'] = img
+        item['name'] = entry_title.text
+        item['video'] = url
+        item['genre'] = 'soccer'    # TODO
+        items.append(item)
+
+    for item in items:
+        print("=====item['video']="+item['video'])
+        if item['video'][0] == '#':
+            #item['video'] = ajax_get_video(acp_post['value'], item['video'])
+            item['video'] = get_match_video_url(acp_post['value'], item['video'])
+            if item['video'] == None:
+                item['name'] += ' - Soon...'
+
+    return items
+
 
 
 def get_matches_ajax(block_id, atts, column_number, block_type, current_page):
@@ -268,7 +380,7 @@ def get_matches(content):
 
     soup = BeautifulSoup(content, "html.parser")
     for td_block in soup.find_all("div", class_=re.compile("^td_module_mx\d+")):
-        print("td_block={0}".format(td_block))
+        #print("td_block={0}".format(td_block))
         if td_block.find("img") is None:
             continue
 
@@ -318,26 +430,30 @@ def get_block_info(content):
     #td_next_page = td_next_prev_wrap.find("a", class_="td-ajax-next-page")
     #td_block_id = td_next_page['data-td_block_id']
 
+    td_block_ids = []
     for div in soup.find_all("div", id=re.compile("^td_uid_\d+_\w+")):
         print("div id={0}, class={1}".format(div['id'], div['class']))
-        td_block_id=div['id']
-        break
-    else:
+        td_block_ids.append(div['id'])
+
+    if len(td_block_ids) <= 0:
         print("ERROR: failed to find td_block_id!")
         return None
 
     #subcat_link = soup.find("a", class_="td-subcat-link")
     #td_block_id = subcat_link['data-td_block_id']
 
-    print("=====td_block_id={0}".format(td_block_id))
+    print("=====td_block_ids={0}".format(td_block_ids))
 
     #for wpb_wrapper in soup.find_all("div", class_="wpb_wrapper"):
     for script in soup.find_all("script"):
         #print("=====wpb_wrapper={0}".format(wpb_wrapper.decode_contents(formatter='html')))
         #script = wpb_wrapper.find("script")
-        if script != None and script.text.find(td_block_id) != -1:
+        for td_block_id in td_block_ids:
+            if script == None or script.text.find(td_block_id) == -1:
+                continue
+
             scriptText = script.text.replace('\n','').replace('\r','')
-            print("=====script={0}".format(scriptText))
+            print("=====script={0}".format(scriptText[0:50]))
 
             # var block_td_uid_1_56da27e59fe1f = new tdBlock();
             # block_td_uid_1_56da27e59fe1f.id = "td_uid_1_56da27e59fe1f";
@@ -369,6 +485,9 @@ def get_block_info(content):
             item['atts'] = td_atts
             item['column_number'] = td_column_number
             item['block_type'] = td_block_type
+            break
+
+        if item.has_key('block_id'):
             break
     else:
         print("Warning: failed to find <script> tag! Try traditional hyperlink instead...")
