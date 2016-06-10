@@ -222,6 +222,16 @@ def get_match_options(match_url):
 
             items.append(item)
 
+        for item in items:
+            print("=====item['video']="+item['video'])
+            #if item['video'][0] == '#':
+            if True:
+                #item['video'] = ajax_get_video(acp_post['value'], item['video'])
+                item['video'] = get_match_video_url(item['video'])
+                if item['video'] == None:
+                    item['name'] += ' - Soon...'
+
+
     else:
         item = {}
         item['thumb'] = img
@@ -229,15 +239,6 @@ def get_match_options(match_url):
         item['video'] = url
         item['genre'] = 'soccer'    # TODO
         items.append(item)
-
-    for item in items:
-        print("=====item['video']="+item['video'])
-        #if item['video'][0] == '#':
-        if True:
-            #item['video'] = ajax_get_video(acp_post['value'], item['video'])
-            item['video'] = get_match_video_url(item['video'])
-            if item['video'] == None:
-                item['name'] += ' - Soon...'
 
     return items
 
@@ -277,10 +278,11 @@ def get_match_video_url(match_url):
     acp_content = soup.find("div", id="acp_content")
     if acp_content != None:
         script = acp_content.find("script")
-        if script.has_attr('data-config'):
+        if script != None and script.has_attr('data-config'):
             url = script['data-config']
             print("=====data-config1={0}".format(url))
-    else:
+
+    if url == None:
         for script in soup.find_all("script"):
             if script.has_attr('data-config'):
                 url = script['data-config']

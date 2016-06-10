@@ -1,0 +1,23 @@
+Version 0.0.1 Initial release
+
+Version 0.0.2 fixed some packaging issue
+
+Version 0.0.3 updated icon and added fanart
+
+Version 0.0.4 fixed 'soon...' issue for new videos
+
+Version 0.0.5 added dynamic categories and next page
+
+Version 0.0.6 use select dialog for match playback
+
+Version 0.0.7 fixed minor issues with select dialog (some unicode title caused
+exception) and next page not working
+
+Version 0.0.8 fixed issue with item in the td_block has been changed.
+TODO: next page is not working
+
+Version 0.0.9 fixed issue that all the other match options (except the
+active/first one) are not working. Next page is working as well.
+
+Version 0.0.10 fixed matches with HL option only cannot be played. 
+Also fixed new matches cannot be played issue.
