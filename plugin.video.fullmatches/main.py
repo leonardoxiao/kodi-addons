@@ -90,7 +90,8 @@ def get_video(video):
     duration = data['duration']
 
     content = data['content']
-    thumbnail = content['poster']
+    if content.has_key('poster'):
+        thumbnail = content['poster']
     src = content['media']['f4m']
 
     # XML
