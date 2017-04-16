@@ -31,4 +31,5 @@ List of addons available
 Donation
 -----
 If this project help you enjoy the soccer, you can give me a cup of coffee :)
+
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=BT49BPZBMRUSY&lc=CA&item_name=PureSpin&currency_code=CAD&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted)
