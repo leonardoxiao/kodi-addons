@@ -27,3 +27,7 @@ or contact me directly. I would prefer you submit an issue, though.
 List of addons available
 ------------------------
 * FullMatches, the Kodi FullMatchesAndShows Video addon, by Leonardo Xiao
+
+Donation
+-----
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](leonardoxiao@gmail.com)
